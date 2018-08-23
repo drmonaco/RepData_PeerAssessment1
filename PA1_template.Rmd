@@ -1,25 +1,70 @@
----
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
----
+##Coursera Project 1 - Evaluating Movement Data
 
 
-## Loading and preprocessing the data
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+setwd("/Users/danielmonaco1/Desktop")
+```
+
+First thing we are going to do is download the data.
+
+```{r cache = TRUE}
+data = read.csv("activity.csv")
+```
+
+# Question 1: What is mean total number of steps taken per day?
+
+```{r Mean Data}
+hist(data$steps)
+mean = mean(data$steps,na.rm = TRUE)
+median = median(data$steps,na.rm = TRUE)
+```
+
+So it looks like the mean steps taken per day was `r mean` and the median was `r median`.
+
+# What is the average daily activity pattern?
+
+```{r}
+library(dplyr)
+timeseries = group_by(data, interval) %>% summarize(m = mean(steps,na.rm = TRUE))
+plot(timeseries$interval,timeseries$m,type = "l",xlab = "Interval",ylab = "Average Steps",main = "Analyzing Average Steps vs Interval Time")
+max= timeseries$interval[which(timeseries$m == max(timeseries$m))]
+```
+
+From this we can tell the interval with the largest average steps is `r max`
+
+# Imputing missing values
+
+Note that there are a number of days/intervals where there are missing values (coded as NA). The presence of missing days may introduce bias into some calculations or summaries of the data.
+
+```{r}
+NAN= sum(is.na(data$steps))
+NAN_data = data[is.na(data$steps),]
+value = data %>% group_by(interval) %>% summarize(m = mean(steps,na.rm = TRUE))
+for(R1 in 1:NAN){
+  NAN_data[R1,1] = value[which(NAN_data[R1,3] == value[,1]),2]
+}
+data2 = rbind(data[!is.na(data$steps),],NAN_data)
+
+hist(data2$steps)
+mean2 = mean(data2$steps)
+median2 = median(data2$steps)
+sum = sum(data2$steps)-sum(data$steps,na.rm = TRUE)
+```
+
+The are `r NAN` values that possess NANs in them. We got around this by approximating the mean value for each interval and replacing each nan with that.
+
+So it looks like the altered mean steps taken per day was `r mean2` and the median was `r median2`. As we can see this had no effect on the mean and median of the data. One thing we do observe is there is a big (`r sum`) increase in the daily estimate of steps.
 
 
+# Are there differences in activity patterns between weekdays and weekends?
 
-## What is mean total number of steps taken per day?
-
-
-
-## What is the average daily activity pattern?
-
-
-
-## Imputing missing values
-
-
-
-## Are there differences in activity patterns between weekdays and weekends?
+```{r}
+library(ggplot2)
+Weekdays = weekdays(as.Date(data2$date))
+Weekdays  =gsub(c("Saturday|Sunday"),"weekend",Weekdays)
+Weekdays  =gsub("Monday|Tuesday|Wednesday|Thursday|Friday","weekday",Weekdays)
+data2[,4] = Weekdays
+timeseries2 = data2 %>% group_by(interval,V4) %>% summarize(m = mean(steps,na.rm = TRUE))
+ggplot(timeseries2,aes(interval,m))+geom_line()+facet_grid(V4~.) + xlab("Interval Duration") +ylab("Steps")
+```
